@@ -1,0 +1,613 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Public Services PWA</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="manifest" href="/manifest.json">
+    <style>
+        /* Custom CSS for animations and additional styling */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .fade-in {
+            animation: fadeIn 0.5s ease-out forwards;
+        }
+        
+        .service-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        
+        .active-tab {
+            border-bottom: 3px solid #3b82f6;
+            color: #3b82f6;
+            font-weight: 600;
+        }
+        
+        /* Offline indicator */
+        .offline-indicator {
+            display: none;
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 1000;
+        }
+        
+        /* Loading spinner */
+        .spinner {
+            border: 4px solid rgba(0, 0, 0, 0.1);
+            border-radius: 50%;
+            border-top: 4px solid #3b82f6;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans">
+    <!-- Offline Indicator -->
+    <div id="offlineIndicator" class="offline-indicator bg-red-500 text-white px-4 py-2 rounded-full shadow-lg">
+        <i class="fas fa-wifi-slash mr-2"></i> Anda sedang offline
+    </div>
+
+    <!-- App Shell -->
+    <div class="min-h-screen flex flex-col">
+        <!-- Header -->
+        <header class="bg-blue-600 text-white shadow-md">
+            <div class="container mx-auto px-4 py-4">
+                <div class="flex justify-between items-center">
+                    <div class="flex items-center space-x-2">
+                        <i class="fas fa-globe text-2xl"></i>
+                        <h1 class="text-xl font-bold">Public Services PWA</h1>
+                    </div>
+                    <div class="flex items-center space-x-4">
+                        <button id="installBtn" class="hidden bg-blue-700 hover:bg-blue-800 px-3 py-1 rounded-full text-sm">
+                            <i class="fas fa-download mr-1"></i> Install
+                        </button>
+                        <button id="themeToggle" class="p-2 rounded-full hover:bg-blue-700">
+                            <i class="fas fa-moon"></i>
+                        </button>
+                    </div>
+                </div>
+                <p class="mt-2 text-sm opacity-90">Progressive Web App untuk Layanan Publik (PKM-PM)</p>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main class="flex-grow container mx-auto px-4 py-6">
+            <!-- Hero Section -->
+            <section class="mb-10 text-center fade-in">
+                <h2 class="text-3xl font-bold text-gray-800 mb-2">Akses Layanan Publik dengan Mudah</h2>
+                <p class="text-gray-600 max-w-2xl mx-auto">
+                    Solusi terintegrasi untuk layanan kesehatan, pendidikan, dan transportasi yang dapat diakses kapan saja, bahkan saat offline.
+                </p>
+                
+                <!-- Search Bar -->
+                <div class="mt-6 max-w-md mx-auto relative">
+                    <input type="text" placeholder="Cari layanan..." 
+                           class="w-full px-4 py-3 rounded-full border border-gray-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent shadow-sm">
+                    <button class="absolute right-2 top-1/2 transform -translate-y-1/2 bg-blue-600 text-white p-2 rounded-full hover:bg-blue-700">
+                        <i class="fas fa-search"></i>
+                    </button>
+                </div>
+            </section>
+
+            <!-- Service Tabs -->
+            <section class="mb-8 fade-in" style="animation-delay: 0.2s;">
+                <div class="flex justify-center border-b border-gray-200">
+                    <button class="tab-btn px-6 py-3 text-gray-600 hover:text-blue-600 transition-all active-tab" data-tab="all">
+                        <i class="fas fa-th mr-2"></i>Semua
+                    </button>
+                    <button class="tab-btn px-6 py-3 text-gray-600 hover:text-blue-600 transition-all" data-tab="health">
+                        <i class="fas fa-heartbeat mr-2"></i>Kesehatan
+                    </button>
+                    <button class="tab-btn px-6 py-3 text-gray-600 hover:text-blue-600 transition-all" data-tab="education">
+                        <i class="fas fa-graduation-cap mr-2"></i>Pendidikan
+                    </button>
+                    <button class="tab-btn px-6 py-3 text-gray-600 hover:text-blue-600 transition-all" data-tab="transport">
+                        <i class="fas fa-bus mr-2"></i>Transportasi
+                    </button>
+                </div>
+            </section>
+
+            <!-- Service Cards -->
+            <section id="servicesContainer" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <!-- Cards will be dynamically loaded here -->
+                <div class="text-center py-10">
+                    <div class="spinner mx-auto"></div>
+                    <p class="mt-4 text-gray-600">Memuat layanan...</p>
+                </div>
+            </section>
+
+            <!-- Features Section -->
+            <section class="mt-16 py-10 bg-blue-50 rounded-xl px-6 fade-in" style="animation-delay: 0.4s;">
+                <h2 class="text-2xl font-bold text-center text-gray-800 mb-8">Keunggulan Aplikasi Kami</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div class="text-center p-4">
+                        <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-bolt text-blue-600 text-2xl"></i>
+                        </div>
+                        <h3 class="font-semibold text-lg mb-2">Cepat</h3>
+                        <p class="text-gray-600">Akses instan dengan teknologi PWA, bahkan pada jaringan yang lambat.</p>
+                    </div>
+                    <div class="text-center p-4">
+                        <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-wifi-slash text-blue-600 text-2xl"></i>
+                        </div>
+                        <h3 class="font-semibold text-lg mb-2">Offline Mode</h3>
+                        <p class="text-gray-600">Tetap bisa mengakses informasi penting meski tanpa koneksi internet.</p>
+                    </div>
+                    <div class="text-center p-4">
+                        <div class="bg-blue-100 w-16 h-16 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <i class="fas fa-mobile-alt text-blue-600 text-2xl"></i>
+                        </div>
+                        <h3 class="font-semibold text-lg mb-2">Responsif</h3>
+                        <p class="text-gray-600">Tampilan optimal di semua perangkat, dari smartphone hingga desktop.</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- About PKM-PM Section -->
+            <section class="mt-16 py-8 border-t border-gray-200 fade-in" style="animation-delay: 0.6s;">
+                <h2 class="text-2xl font-bold text-center text-gray-800 mb-6">Tentang PKM-PM</h2>
+                <div class="max-w-3xl mx-auto bg-white p-6 rounded-lg shadow-sm">
+                    <p class="text-gray-700 mb-4">
+                        Aplikasi ini dikembangkan sebagai bagian dari Program Kreativitas Mahasiswa - Pengabdian Masyarakat (PKM-PM) yang bertujuan untuk memberikan solusi teknologi dalam meningkatkan aksesibilitas layanan publik.
+                    </p>
+                    <p class="text-gray-700">
+                        Dengan memanfaatkan teknologi Progressive Web App (PWA), kami berupaya menjembatani kesenjangan digital dan memberikan kemudahan akses informasi layanan kesehatan, pendidikan, dan transportasi kepada masyarakat luas.
+                    </p>
+                </div>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-gray-800 text-white py-8">
+            <div class="container mx-auto px-4">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div>
+                        <h3 class="text-lg font-semibold mb-4">Public Services PWA</h3>
+                        <p class="text-gray-400">Solusi terintegrasi untuk layanan publik berbasis teknologi Progressive Web App.</p>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold mb-4">Kontak</h3>
+                        <ul class="space-y-2 text-gray-400">
+                            <li><i class="fas fa-envelope mr-2"></i> pkm-pm@example.com</li>
+                            <li><i class="fas fa-phone mr-2"></i> +62 123 4567 890</li>
+                            <li><i class="fas fa-map-marker-alt mr-2"></i> Universitas Contoh, Indonesia</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-semibold mb-4">Sosial Media</h3>
+                        <div class="flex space-x-4">
+                            <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                                <i class="fab fa-facebook-f text-xl"></i>
+                            </a>
+                            <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                                <i class="fab fa-twitter text-xl"></i>
+                            </a>
+                            <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                                <i class="fab fa-instagram text-xl"></i>
+                            </a>
+                            <a href="#" class="text-gray-400 hover:text-white transition-colors">
+                                <i class="fab fa-youtube text-xl"></i>
+                            </a>
+                        </div>
+                        <div class="mt-4">
+                            <button id="shareBtn" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-full text-sm">
+                                <i class="fas fa-share-alt mr-2"></i> Bagikan Aplikasi
+                            </button>
+                        </div>
+                    </div>
+                </div>
+                <div class="border-t border-gray-700 mt-8 pt-6 text-center text-gray-400 text-sm">
+                    <p>&copy; 2023 Tim PKM-PM. All rights reserved.</p>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <!-- Service Modal -->
+    <div id="serviceModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 hidden">
+        <div class="bg-white rounded-lg max-w-md w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div class="p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h3 id="modalTitle" class="text-xl font-bold text-gray-800"></h3>
+                        <span id="modalCategory" class="inline-block px-2 py-1 text-xs rounded-full mt-1"></span>
+                    </div>
+                    <button id="closeModal" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                <img id="modalImage" src="" alt="" class="w-full h-48 object-cover rounded-lg mb-4">
+                <p id="modalDescription" class="text-gray-700 mb-4"></p>
+                <div class="flex justify-between items-center">
+                    <div id="modalLocation" class="text-gray-600 text-sm">
+                        <i class="fas fa-map-marker-alt mr-1"></i>
+                        <span></span>
+                    </div>
+                    <a id="modalLink" href="#" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-full text-sm">
+                        <i class="fas fa-external-link-alt mr-1"></i> Akses Layanan
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript -->
+    <script>
+        // Service Data
+        const services = [
+            {
+                id: 1,
+                title: "Pendaftaran Online Puskesmas",
+                description: "Layanan pendaftaran online untuk berobat di puskesmas terdekat tanpa antri.",
+                category: "health",
+                icon: "fas fa-hospital",
+                color: "bg-red-100 text-red-600",
+                image: "https://images.unsplash.com/photo-1576091160550-2173dba999ef?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80",
+                location: "Seluruh Indonesia"
+            },
+            {
+                id: 2,
+                title: "Info Jadwal Dokter",
+                description: "Informasi jadwal praktik dokter di fasilitas kesehatan terdekat.",
+                category: "health",
+                icon: "fas fa-user-md",
+                color: "bg-red-100 text-red-600",
+                image: "https://images.unsplash.com/photo-1550831107-1553da8c8464?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1374&q=80",
+                location: "Seluruh Indonesia"
+            },
+            {
+                id: 3,
+                title: "E-Learning Sekolah",
+                description: "Platform pembelajaran online untuk siswa SD, SMP, dan SMA.",
+                category: "education",
+                icon: "fas fa-laptop",
+                color: "bg-blue-100 text-blue-600",
+                image: "https://images.unsplash.com/photo-1588072432836-e10032774350?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1472&q=80",
+                location: "Dinas Pendidikan"
+            },
+            {
+                id: 4,
+                title: "Perpustakaan Digital",
+                description: "Akses ribuan buku pelajaran dan referensi secara gratis.",
+                category: "education",
+                icon: "fas fa-book",
+                color: "bg-blue-100 text-blue-600",
+                image: "https://images.unsplash.com/photo-1524995997946-a1c2e315a42f?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80",
+                location: "Perpustakaan Nasional"
+            },
+            {
+                id: 5,
+                title: "Info Jadwal Bus",
+                description: "Informasi real-time jadwal dan rute angkutan umum.",
+                category: "transport",
+                icon: "fas fa-bus",
+                color: "bg-green-100 text-green-600",
+                image: "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80",
+                location: "Kota-kota Besar"
+            },
+            {
+                id: 6,
+                title: "Pembayaran Parkir Online",
+                description: "Bayar parkir kendaraan melalui aplikasi tanpa repot.",
+                category: "transport",
+                icon: "fas fa-parking",
+                color: "bg-green-100 text-green-600",
+                image:"https://images.unsplash.com/photo-1504215680853-026ed2a45def?auto=format&fit=crop&w=1350&q=80" 
+,
+                location: "Area Perkotaan"
+            },
+            {
+                id: 7,
+                title: "Konsultasi Kesehatan Online",
+                description: "Konsultasi dengan dokter umum dan spesialis secara online.",
+                category: "health",
+                icon: "fas fa-comment-medical",
+                color: "bg-red-100 text-red-600",
+                image:"https://images.unsplash.com/photo-1526256262350-7da7584cf5eb?auto=format&fit=crop&w=1350&q=80" ,
+                location: "Seluruh Indonesia"
+            },
+            {
+                id: 8,
+                title: "Beasiswa Pendidikan",
+                description: "Informasi dan pendaftaran beasiswa untuk pelajar dan mahasiswa.",
+                category: "education",
+                icon: "fas fa-graduation-cap",
+                color: "bg-blue-100 text-blue-600",
+                image: "https://images.unsplash.com/photo-1523050854058-8df90110c9f1?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80",
+                location: "Kementerian Pendidikan"
+            },
+            {
+                id: 9,
+                title: "Tiket Kereta Online",
+                description: "Pemesanan dan pembayaran tiket kereta api secara online.",
+                category: "transport",
+                icon: "fas fa-train",
+                color: "bg-green-100 text-green-600",
+                image: "https://images.unsplash.com/photo-1516054575922-f0b8eeadec1a?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=1470&q=80",
+                location: "PT. Kereta Api Indonesia"
+            }
+        ];
+
+        // DOM Elements
+        const servicesContainer = document.getElementById('servicesContainer');
+        const tabButtons = document.querySelectorAll('.tab-btn');
+        const serviceModal = document.getElementById('serviceModal');
+        const modalTitle = document.getElementById('modalTitle');
+        const modalCategory = document.getElementById('modalCategory');
+        const modalImage = document.getElementById('modalImage');
+        const modalDescription = document.getElementById('modalDescription');
+        const modalLocation = document.getElementById('modalLocation');
+        const modalLink = document.getElementById('modalLink');
+        const closeModal = document.getElementById('closeModal');
+        const themeToggle = document.getElementById('themeToggle');
+        const installBtn = document.getElementById('installBtn');
+        const shareBtn = document.getElementById('shareBtn');
+        const offlineIndicator = document.getElementById('offlineIndicator');
+
+        // Current active tab
+        let activeTab = 'all';
+
+        // Initialize the app
+        function initApp() {
+            renderServices(services);
+            setupEventListeners();
+            checkNetworkStatus();
+            registerServiceWorker();
+            detectInstallPrompt();
+        }
+
+        // Render services based on active tab
+        function renderServices(servicesToRender) {
+            servicesContainer.innerHTML = '';
+            
+            if (servicesToRender.length === 0) {
+                servicesContainer.innerHTML = `
+                    <div class="col-span-full text-center py-10">
+                        <i class="fas fa-info-circle text-4xl text-gray-400 mb-4"></i>
+                        <p class="text-gray-600">Tidak ada layanan yang tersedia untuk kategori ini</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            servicesToRender.forEach(service => {
+                const serviceCard = document.createElement('div');
+                serviceCard.className = `service-card bg-white rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer ${service.category === 'health' ? 'border-l-4 border-red-500' : service.category === 'education' ? 'border-l-4 border-blue-500' : 'border-l-4 border-green-500'}`;
+                serviceCard.innerHTML = `
+                    <div class="h-48 overflow-hidden">
+                        <img src="${service.image}" alt="${service.title}" class="w-full h-full object-cover">
+                    </div>
+                    <div class="p-5">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-bold text-lg text-gray-800">${service.title}</h3>
+                            <span class="${service.color} text-xs px-2 py-1 rounded-full">${service.category === 'health' ? 'Kesehatan' : service.category === 'education' ? 'Pendidikan' : 'Transportasi'}</span>
+                        </div>
+                        <p class="text-gray-600 text-sm mb-4 line-clamp-2">${service.description}</p>
+                        <div class="flex justify-between items-center text-sm">
+                            <span class="text-gray-500"><i class="fas fa-map-marker-alt mr-1"></i> ${service.location}</span>
+                            <button class="text-blue-600 hover:text-blue-800 font-medium">Lihat Detail</button>
+                        </div>
+                    </div>
+                `;
+                
+                serviceCard.addEventListener('click', () => openServiceModal(service));
+                servicesContainer.appendChild(serviceCard);
+            });
+        }
+
+        // Open service modal
+        function openServiceModal(service) {
+            modalTitle.textContent = service.title;
+            modalDescription.textContent = service.description;
+            modalImage.src = service.image;
+            modalImage.alt = service.title;
+            modalLocation.querySelector('span').textContent = service.location;
+            modalLink.href = `#service-${service.id}`;
+            
+            // Set category badge
+            modalCategory.textContent = service.category === 'health' ? 'Kesehatan' : service.category === 'education' ? 'Pendidikan' : 'Transportasi';
+            modalCategory.className = `inline-block px-2 py-1 text-xs rounded-full mt-1 ${service.color}`;
+            
+            serviceModal.classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        // Close service modal
+        function closeServiceModal() {
+            serviceModal.classList.add('hidden');
+            document.body.style.overflow = '';
+        }
+
+        // Filter services by category
+        function filterServices(category) {
+            if (category === 'all') {
+                renderServices(services);
+            } else {
+                const filteredServices = services.filter(service => service.category === category);
+                renderServices(filteredServices);
+            }
+        }
+
+        // Setup event listeners
+        function setupEventListeners() {
+            // Tab buttons
+            tabButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    tabButtons.forEach(btn => btn.classList.remove('active-tab'));
+                    button.classList.add('active-tab');
+                    activeTab = button.dataset.tab;
+                    filterServices(activeTab);
+                });
+            });
+            
+            // Close modal
+            closeModal.addEventListener('click', closeServiceModal);
+            serviceModal.addEventListener('click', (e) => {
+                if (e.target === serviceModal) {
+                    closeServiceModal();
+                }
+            });
+            
+            // Theme toggle
+            themeToggle.addEventListener('click', toggleTheme);
+            
+            // Install button
+            if (installBtn) {
+                installBtn.addEventListener('click', installPWA);
+            }
+            
+            // Share button
+            if (shareBtn) {
+                shareBtn.addEventListener('click', shareApp);
+            }
+            
+            // Network status
+            window.addEventListener('online', () => {
+                offlineIndicator.style.display = 'none';
+            });
+            
+            window.addEventListener('offline', () => {
+                offlineIndicator.style.display = 'block';
+            });
+        }
+
+        // Toggle dark/light theme
+        function toggleTheme() {
+            const icon = themeToggle.querySelector('i');
+            if (document.documentElement.classList.contains('dark')) {
+                document.documentElement.classList.remove('dark');
+                localStorage.setItem('theme', 'light');
+                icon.classList.replace('fa-sun', 'fa-moon');
+            } else {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('theme', 'dark');
+                icon.classList.replace('fa-moon', 'fa-sun');
+            }
+        }
+
+        // Check and apply saved theme
+        function applySavedTheme() {
+            const savedTheme = localStorage.getItem('theme');
+            const icon = themeToggle.querySelector('i');
+            
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark');
+                icon.classList.replace('fa-moon', 'fa-sun');
+            } else {
+                document.documentElement.classList.remove('dark');
+                icon.classList.replace('fa-sun', 'fa-moon');
+            }
+        }
+
+        // Check network status
+        function checkNetworkStatus() {
+            if (!navigator.onLine) {
+                offlineIndicator.style.display = 'block';
+            }
+        }
+
+        // Register Service Worker
+        function registerServiceWorker() {
+            if ('serviceWorker' in navigator) {
+                window.addEventListener('load', () => {
+                    navigator.serviceWorker.register('/sw.js').then(registration => {
+                        console.log('ServiceWorker registration successful with scope: ', registration.scope);
+                    }).catch(err => {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+                });
+            }
+        }
+
+        // Detect PWA install prompt
+        function detectInstallPrompt() {
+            let deferredPrompt;
+            
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+                installBtn.classList.remove('hidden');
+            });
+            
+            window.addEventListener('appinstalled', () => {
+                installBtn.classList.add('hidden');
+                deferredPrompt = null;
+            });
+        }
+
+        // Install PWA
+        function installPWA() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                
+                deferredPrompt.userChoice.then((choiceResult) => {
+                    if (choiceResult.outcome === 'accepted') {
+                        console.log('User accepted the install prompt');
+                    } else {
+                        console.log('User dismissed the install prompt');
+                    }
+                    deferredPrompt = null;
+                });
+            }
+        }
+
+        // Share app
+        function shareApp() {
+            if (navigator.share) {
+                navigator.share({
+                    title: 'Public Services PWA',
+                    text: 'Akses layanan publik (kesehatan, pendidikan, transportasi) dengan mudah melalui aplikasi ini.',
+                    url: window.location.href
+                }).then(() => {
+                    console.log('Thanks for sharing!');
+                }).catch(err => {
+                    console.log('Error sharing:', err);
+                });
+            } else {
+                // Fallback for browsers that don't support Web Share API
+                alert('Fitur berbagi tidak didukung di browser ini. Anda dapat menyalin URL secara manual.');
+            }
+        }
+
+        // Initialize the app when DOM is loaded
+        document.addEventListener('DOMContentLoaded', () => {
+            applySavedTheme();
+            initApp();
+        });
+    </script>
+
+    <!-- Manifest for PWA -->
+    <script>
+    async function registerServiceWorker() {
+        if ('serviceWorker' in navigator) {
+            try {
+                const registration = await navigator.serviceWorker.register('/sw.js');
+                console.log('Service worker registration succeeded:', registration);
+            } catch (error) {
+                console.error('Service worker registration failed:', error);
+            }
+        } else {
+            console.warn('Service workers are not supported.');
+        }
+    }
+
+    registerServiceWorker();
+</script>
+
+</body>
+</html>
